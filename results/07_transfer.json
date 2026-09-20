@@ -1,0 +1,25 @@
+{
+  "gtex_normal_frac": 0.9941634241245136,
+  "gtex_n": 514,
+  "metabric_frac_tumor": 0.9929292929292929,
+  "metabric_n": 1980,
+  "panel": [
+    "ADIPOQ",
+    "FABP4",
+    "LEP",
+    "PLIN1",
+    "PPARG",
+    "CD36",
+    "LPL",
+    "CIDEA",
+    "LIPE",
+    "DGAT2",
+    "CFD",
+    "ENPP2",
+    "ADH1B",
+    "GPD1",
+    "CIDEC",
+    "COL10A1",
+    "MMP11"
+  ]
+}

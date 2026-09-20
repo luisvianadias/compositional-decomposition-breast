@@ -1,0 +1,12 @@
+{
+  "tcga_tumor": -1.373506784439087,
+  "tcga_adjacent_normal": 0.4004589915275574,
+  "gtex_breast": 0.38831382989883423,
+  "gtex_adipose": 0.6958150863647461,
+  "n": {
+    "tcga_tumor": 518,
+    "tcga_normal": 113,
+    "gtex_breast": 514,
+    "gtex_adipose": 714
+  }
+}

@@ -1,0 +1,31 @@
+# .gitignore para o repo público de reprodução
+# Dados brutos são baixados por 01_download_data.py (~3 GB, não versionar)
+
+# GDC STAR counts (~2.7 GB em 631 TSVs)
+data/gdc_brca/
+
+# GTEx v10 (~60 MB comprimido)
+data/*.gct.gz
+
+# ESTIMATE reference package (~4 MB)
+data/estimate_pkg/
+data/estimate_r.tar.gz
+
+# Matriz construída (~40 MB)
+data/tcga_brca_counts.npz
+
+# Centróides PAM50 (pequeno, incluir para reprodutibilidade)
+# data/ssp2006_genefu.rda
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Manuscript (submitted separately to bioRxiv)
+MANUSCRIPT.md
+MANUSCRIPT.pdf

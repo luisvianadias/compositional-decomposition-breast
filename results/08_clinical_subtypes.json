@@ -1,0 +1,39 @@
+{
+  "clinical_bh": {
+    "GRADE(Cochran-Armitage)": 0.04322258653827271,
+    "ER_STATUS": 0.016131676594836185,
+    "PR_STATUS": 0.03974857219021708,
+    "histology": 0.00013415688329044005
+  },
+  "pam50_chi2_with_normal": 0.002254357108394616,
+  "pam50_chi2_without_normal": 0.04035287829050343,
+  "joint_bh": {
+    "GRADE(Cochran-Armitage)": 0.04322258653827271,
+    "ER_STATUS": 0.013443063829030155,
+    "PR_STATUS": 0.03726428642832851,
+    "histology": 0.00016769610411305005,
+    "PAM50(with Normal-like)": 0.00563589277098654
+  },
+  "pam50_capture": {
+    "Basal": {
+      "mean": 0.9,
+      "n": 220
+    },
+    "Her2": {
+      "mean": 0.9590163934426229,
+      "n": 122
+    },
+    "LumA": {
+      "mean": 0.9232720355104629,
+      "n": 1577
+    },
+    "LumB": {
+      "mean": 1.0,
+      "n": 52
+    },
+    "Normal": {
+      "mean": 0.6666666666666666,
+      "n": 9
+    }
+  }
+}
