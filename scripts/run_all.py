@@ -37,16 +37,17 @@ EXPECTED = {
     "07_transfer.json": {
         "gtex_normal_frac": 0.996, "metabric_frac_tumor": 0.935},
     "08_clinical_subtypes.json": {
-        "clinical_bh/histology": 1.34e-04, "clinical_bh/ER_STATUS": 1.61e-02,
-        "clinical_bh/PR_STATUS": 3.97e-02,
-        "pam50_chi2_with_normal": 2.25e-03,
-        "pam50_chi2_without_normal": 4.04e-02},
+        "clinical_bh/histology": (1.34e-04, "rel"),
+        "clinical_bh/ER_STATUS": (1.61e-02, "rel"),
+        "clinical_bh/PR_STATUS": (3.97e-02, "rel"),
+        "pam50_chi2_with_normal": (2.25e-03, "rel"),
+        "pam50_chi2_without_normal": (4.04e-02, "rel")},
     "09_clinical_models.json": {
         "overall_capture/LR": 0.924, "overall_capture/AXIS": 0.838,
         "hist_capture/LR/lobular/mean": 0.836,
         "hist_capture/AXIS/lobular/mean": 0.644,
-        "pam50_full_chi2/lr": 2.25e-03,
-        "pam50_er_validation/er_positive_basal": 0.027,
+        "pam50_full_chi2/lr": (2.25e-03, "rel"),
+        "pam50_er_validation/er_positive_basal": (0.027, "abs"),
         "pam50_er_validation/er_positive_lumA": 0.907,
         "split_half/LR@0.5/half_B": 0.930,
         "split_half/AXIS@t*/half_B": 0.848,
@@ -83,18 +84,20 @@ def main():
             print(f"  [skip] {jf}")
             continue
         d = json.load(open(p, encoding="utf-8"))
-        for path, exp in checks.items():
+        for path, spec in checks.items():
+            exp, mode = spec if isinstance(spec, tuple) else (spec, "auto")
             v = get(d, path)
-            # accuracies: absolute tolerance; p-values/chi2/BH (<<1):
-            # relative tolerance so the check stays meaningful at that scale
-            if abs(exp) < 0.05:
+            # mode "rel": p-values/chi2/BH — absolute tolerance is
+            # meaningless at that scale. "abs": accuracies/fractions.
+            # "auto": relative for small magnitudes, absolute otherwise.
+            if mode == "rel" or (mode == "auto" and abs(exp) < 0.05):
                 ok = math.isclose(v, exp, rel_tol=0.02)
             else:
                 ok = abs(v - exp) <= TOL
             n_ok += ok
             n_bad += (not ok)
             print(f"  [{'PASS' if ok else 'FAIL'}] {jf}::{path} = "
-                  f"{v:.6g} (esperado {exp})")
+                  f"{v:.6g} (esperado {exp}, tol {mode})")
     print(f"\n{n_ok} PASS / {n_bad} FAIL "
           f"({time.time()-t0:.0f}s)")
     sys.exit(0 if n_bad == 0 else 1)

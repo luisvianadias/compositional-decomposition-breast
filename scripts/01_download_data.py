@@ -66,7 +66,8 @@ if not exists(man, 100):
         {"op": "in", "content": {"field": "files.access",
                                  "value": ["open"]}}]}
     rows = []
-    for offset in (0, 1000):
+    offset = 0
+    while True:
         params = urllib.parse.urlencode({
             "filters": json.dumps(filters),
             "fields": "file_id,cases.samples.submitter_id,"
@@ -75,12 +76,16 @@ if not exists(man, 100):
         req = urllib.request.Request(
             "https://api.gdc.cancer.gov/files?" + params)
         r = json.load(urllib.request.urlopen(req, timeout=120))
-        for h in r["data"]["hits"]:
+        hits = r["data"]["hits"]
+        for h in hits:
             if not h.get("cases"):
                 continue
             s = h["cases"][0].get("samples", [{}])[0]
             rows.append((h["id"], s.get("submitter_id", ""),
                          s.get("sample_type", "")))
+        if len(hits) < 1000:
+            break
+        offset += 1000
     with open(man, "w", newline="") as f:
         w = csv.writer(f, delimiter="\t")
         w.writerow(["file_id", "sample_barcode", "sample_type"])

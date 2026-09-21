@@ -262,7 +262,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.metrics import roc_auc_score
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import load_tcga, pscore, PANEL_B, PANEL_C
+from common import load_tcga, PANEL_B, PANEL_C
 from pipeline_utils import pick_nearest_non_panel
 
 t0 = time.time()
@@ -270,10 +270,8 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(DIR, "..", "results")
 os.makedirs(OUT, exist_ok=True)
 
-X, y, pos, gk = load_tcga()
+X, y, pos, _ = load_tcga()
 N_GENES = X.shape[1]
-abs_lfc = np.abs(X[y == 1].mean(0) - X[y == 0].mean(0))
-rank_global = np.argsort(-abs_lfc)
 
 PANEL_A = PANEL_B[:12]
 KS = [1, 2, 3, 5, 10, 20]
@@ -295,6 +293,13 @@ arms = {n: {"acc": np.zeros(len(splits)), "auc": np.zeros(len(splits))}
         + [f"k{k}" for k in KS] + ["null"]}
 null_draws_acc = np.zeros(N_NULL)
 aucs_null_acc = np.zeros(N_NULL)
+
+# null: 500 uniformly random 10-gene panels, drawn ONCE and paired across
+# all splits (each panel evaluated on 15 test folds). The manuscript
+# quotes the median of the pooled per-draw accuracies.
+rng_null = np.random.default_rng(42)
+null_panels = np.array([rng_null.choice(N_GENES, size=NULL_K, replace=False)
+                        for _ in range(N_NULL)])
 
 for i, (tr, te) in enumerate(splits):
     Xtr, Xte, ytr, yte = X[tr], X[te], y[tr], y[te]
@@ -328,12 +333,11 @@ for i, (tr, te) in enumerate(splits):
     arms["randDE"]["acc"][i] = a
     arms["randDE"]["auc"][i] = u
 
-    # null: uniform random 10-gene panels (median over B draws per split)
-    rng = np.random.default_rng(42)
+    # null: fixed panel set, per-split accuracies pooled across splits
     draws = np.zeros(N_NULL)
     aucs_null = np.zeros(N_NULL)
     for b in range(N_NULL):
-        cols = rng.choice(N_GENES, size=NULL_K, replace=False)
+        cols = null_panels[b]
         m = LogisticRegression(max_iter=2000).fit(Ztr[:, cols], ytr)
         draws[b] = m.score(Zte[:, cols], yte)
         aucs_null[b] = roc_auc_score(yte, m.predict_proba(Zte[:, cols])[:, 1])
@@ -411,12 +415,15 @@ for tr, te in splits:
 
 p1 = PCA(n_components=1, random_state=0).fit(Ztr)
 pc1_full = p1.transform(Ztr)[:, 0]
-pc1_auc_full = roc_auc_score(y[tr], pc1_full)
+# PC1 direction is sign-indeterminate (SVD): orient the AUC upward
+auc_full = roc_auc_score(y[tr], pc1_full)
+pc1_auc_full = max(auc_full, 1.0 - auc_full)
 sep_full = abs(pc1_full[y[tr] == 1].mean() - pc1_full[y[tr] == 0].mean()) / \
            pc1_full.std()
 p1r = PCA(n_components=1, random_state=0).fit(Ztr_r)
 pc1_r = p1r.transform(Ztr_r)[:, 0]
-pc1_auc_r = roc_auc_score(y[tr], pc1_r)
+auc_r = roc_auc_score(y[tr], pc1_r)
+pc1_auc_r = max(auc_r, 1.0 - auc_r)
 sep_r = abs(pc1_r[y[tr] == 1].mean() - pc1_r[y[tr] == 0].mean()) / pc1_r.std()
 
 res = {
@@ -450,7 +457,6 @@ import numpy as np
 from common import DATA, load_tcga, load_gct, PURE16, strip_version
 
 X, y, pos, gk = load_tcga()
-_, _, n_tcga = None, None, X.shape[0]
 gtex_breast = os.path.join(DATA, "gtex_breast_v10_reads.gct.gz")
 gtex_adip = os.path.join(DATA, "gtex_adipose_subcut_v10_reads.gct.gz")
 
@@ -699,7 +705,7 @@ Output: results/08_clinical_subtypes.json
 import os, sys, json, math, time, requests
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2_contingency, binomtest, norm
+from scipy.stats import chi2_contingency
 from sklearn.linear_model import LogisticRegression
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -857,7 +863,7 @@ for n_, b in zip(nm_, bhj):
     print(f"  {n_:<12} BH={b:.2e}")
 
 res = {
-    "clinical_bh": {n_: float(b) for n_, b in zip(names, bh[:m_ - 1])},
+    "clinical_bh": {n_: float(b) for n_, b in zip(names, bh)},
     "pam50_chi2_with_normal": float(p5),
     "pam50_chi2_without_normal": float(p4),
     "joint_bh": {n_: float(b) for n_, b in zip(nm_, bhj)},
@@ -1745,6 +1751,7 @@ def pick_nearest_non_panel(lfc, panel_cols, panel_symbols, sym_of):
 ```python
 # -*- coding: utf-8 -*-
 """Public reproduction orchestrator. Stages skip when outputs exist."""
+import math
 import os, sys, subprocess, argparse, json, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -1829,11 +1836,16 @@ def main():
         d = json.load(open(p, encoding="utf-8"))
         for path, exp in checks.items():
             v = get(d, path)
-            ok = abs(v - exp) <= TOL
+            # accuracies: absolute tolerance; p-values/chi2/BH (<<1):
+            # relative tolerance so the check stays meaningful at that scale
+            if abs(exp) < 0.05:
+                ok = math.isclose(v, exp, rel_tol=0.02)
+            else:
+                ok = abs(v - exp) <= TOL
             n_ok += ok
             n_bad += (not ok)
             print(f"  [{'PASS' if ok else 'FAIL'}] {jf}::{path} = "
-                  f"{v:.4f} (esperado {exp})")
+                  f"{v:.6g} (esperado {exp})")
     print(f"\n{n_ok} PASS / {n_bad} FAIL "
           f"({time.time()-t0:.0f}s)")
     sys.exit(0 if n_bad == 0 else 1)
@@ -1967,6 +1979,13 @@ expected = mat_filtered[:, cols]
 result = extract_gene_matrix(mat_filtered, sym_pos, wanted)
 assert result.shape == (n_samples, 3), f"shape {result.shape}"
 assert (result == expected).all(), "values mismatch"
+
+# test: raises KeyError on a symbol absent from the filtered axis
+try:
+    extract_gene_matrix(mat_filtered, sym_pos, ["GENE9999_MISSING"])
+    raise AssertionError("expected KeyError for missing symbol")
+except KeyError:
+    pass
 print(f"E15-GUARD regression test: PASS")
 ```
 

@@ -34,17 +34,10 @@ plt.rcParams.update({
 })
 
 data_path = os.path.join(RES, "08_clinical_subtypes.json")
-if os.path.exists(data_path):
-    data = json.load(open(data_path))
-    cap = data["pam50_capture"]
-else:
-    cap = {
-        "Basal": {"mean": 0.90, "n": 220},
-        "Her2": {"mean": 0.96, "n": 122},
-        "LumB": {"mean": 1.00, "n": 52},
-        "LumA": {"mean": 0.92, "n": 1577},
-        "Normal": {"mean": 0.67, "n": 9},
-    }
+if not os.path.exists(data_path):
+    sys.exit(f"[figure2] {data_path} ausente — rode 08_clinical_subtypes.py "
+             "antes.")
+cap = json.load(open(data_path))["pam50_capture"]
 
 order = ["Basal", "Her2", "LumB", "LumA", "Normal"]
 labels, n_str, vals = [], [], []

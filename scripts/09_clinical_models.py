@@ -9,7 +9,7 @@ No proprietary components. Outputs: results/09_clinical_models.json
 import os, sys, json, math, time, requests
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2_contingency, binomtest, spearmanr
+from scipy.stats import chi2_contingency, spearmanr
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
 

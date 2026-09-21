@@ -150,7 +150,6 @@ df4 = df[df["PAM50"] != "Normal"]
 p4 = chi2_contingency(pd.crosstab(df4["PAM50"], df4["capt"]))[1]
 
 # joint BH over the five-family tests + PAM50
-import time as _t
 all_p = dict(pvals)
 all_p["PAM50(with Normal-like)"] = p5
 nm_ = list(all_p)

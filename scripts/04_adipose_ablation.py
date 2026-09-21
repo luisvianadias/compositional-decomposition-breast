@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import load_tcga, PANEL_B
 
-X, y, pos, gk = load_tcga()
+X, y, pos, _ = load_tcga()
 colB = np.array([pos[g] for g in PANEL_B if g in pos])
 
 # exatamente como e13: per-gene z (train params), A do painel por-gene-z
@@ -59,6 +59,8 @@ res = {
                      "auc": float(pc1_auc_full), "sep_sd": float(sep_full)},
     "pc1_residual": {"var": float(p1r.explained_variance_ratio_[0]),
                      "auc": float(pc1_auc_r), "sep_sd": float(sep_r)},
+    "note": "pc1 AUCs are in-sample (training data of the last split), "
+            "sign-oriented via max(auc, 1-auc)",
 }
 print(f"antes: {res['before']['acc']:.1%}/{res['before']['auc']:.3f} | "
       f"depois: {res['after']['acc']:.1%}/{res['after']['auc']:.3f}")

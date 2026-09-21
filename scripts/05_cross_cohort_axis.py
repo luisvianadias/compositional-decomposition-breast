@@ -5,9 +5,9 @@ Output: results/05_cross_cohort_axis.json
 """
 import os, sys, json
 import numpy as np
-from common import DATA, load_tcga, load_gct, PURE16, strip_version
+from common import DATA, load_tcga, load_gct, PURE16
 
-X, y, pos, gk = load_tcga()
+X, y, pos, _ = load_tcga()
 gtex_breast = os.path.join(DATA, "gtex_breast_v10_reads.gct.gz")
 gtex_adip = os.path.join(DATA, "gtex_adipose_subcut_v10_reads.gct.gz")
 

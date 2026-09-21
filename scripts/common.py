@@ -5,6 +5,9 @@ import numpy as np
 import pandas as pd
 import requests
 
+# single guarded implementation (E15-GUARD); re-exported for API compat
+from pipeline_utils import extract_gene_matrix  # noqa: F401
+
 DATA = os.environ.get("BCD_DATA_DIR", os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "data"))
 
@@ -36,16 +39,6 @@ def build_symbol_index(symbols_full, keep_mask):
     for i, s in enumerate(kept):
         idx.setdefault(s, i)
     return idx
-
-
-def extract_gene_matrix(mat_full_filtered, symbol_pos, wanted):
-    """mat (samples x filtered genes) -> samples x wanted. Raises on
-    missing symbols (axis-mismatch guard, see README)."""
-    missing = [g for g in wanted if g not in symbol_pos]
-    if missing:
-        raise KeyError(f"symbols absent from filtered axis: {missing}")
-    return np.ascontiguousarray(mat_full_filtered[:, [symbol_pos[g]
-                                                     for g in wanted]])
 
 
 def load_tcga(data_dir=DATA):

@@ -25,13 +25,11 @@ N_GENES = X.shape[1]
 
 PANEL_A = PANEL_B[:12]
 KS = [1, 2, 3, 5, 10, 20]
-N_RAND_MATCHED = 5
 N_NULL = 500
 NULL_K = 10
 
 rskf = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=42)
 splits = list(rskf.split(X, y))
-n_tr, n_te = len(splits[0][0]), len(splits[0][1])
 
 def lr_acc(Ftr, ytr, Fte, yte):
     m = LogisticRegression(max_iter=2000).fit(Ftr, ytr)
