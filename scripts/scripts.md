@@ -75,7 +75,8 @@ if not exists(man, 100):
         {"op": "in", "content": {"field": "files.access",
                                  "value": ["open"]}}]}
     rows = []
-    for offset in (0, 1000):
+    offset = 0
+    while True:
         params = urllib.parse.urlencode({
             "filters": json.dumps(filters),
             "fields": "file_id,cases.samples.submitter_id,"
@@ -84,12 +85,16 @@ if not exists(man, 100):
         req = urllib.request.Request(
             "https://api.gdc.cancer.gov/files?" + params)
         r = json.load(urllib.request.urlopen(req, timeout=120))
-        for h in r["data"]["hits"]:
+        hits = r["data"]["hits"]
+        for h in hits:
             if not h.get("cases"):
                 continue
             s = h["cases"][0].get("samples", [{}])[0]
             rows.append((h["id"], s.get("submitter_id", ""),
                          s.get("sample_type", "")))
+        if len(hits) < 1000:
+            break
+        offset += 1000
     with open(man, "w", newline="") as f:
         w = csv.writer(f, delimiter="\t")
         w.writerow(["file_id", "sample_barcode", "sample_type"])
@@ -275,13 +280,11 @@ N_GENES = X.shape[1]
 
 PANEL_A = PANEL_B[:12]
 KS = [1, 2, 3, 5, 10, 20]
-N_RAND_MATCHED = 5
 N_NULL = 500
 NULL_K = 10
 
 rskf = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=42)
 splits = list(rskf.split(X, y))
-n_tr, n_te = len(splits[0][0]), len(splits[0][1])
 
 def lr_acc(Ftr, ytr, Fte, yte):
     m = LogisticRegression(max_iter=2000).fit(Ftr, ytr)
@@ -383,7 +386,7 @@ from sklearn.decomposition import PCA
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import load_tcga, PANEL_B
 
-X, y, pos, gk = load_tcga()
+X, y, pos, _ = load_tcga()
 colB = np.array([pos[g] for g in PANEL_B if g in pos])
 
 # exatamente como e13: per-gene z (train params), A do painel por-gene-z
@@ -433,6 +436,8 @@ res = {
                      "auc": float(pc1_auc_full), "sep_sd": float(sep_full)},
     "pc1_residual": {"var": float(p1r.explained_variance_ratio_[0]),
                      "auc": float(pc1_auc_r), "sep_sd": float(sep_r)},
+    "note": "pc1 AUCs are in-sample (training data of the last split), "
+            "sign-oriented via max(auc, 1-auc)",
 }
 print(f"antes: {res['before']['acc']:.1%}/{res['before']['auc']:.3f} | "
       f"depois: {res['after']['acc']:.1%}/{res['after']['auc']:.3f}")
@@ -454,9 +459,9 @@ Output: results/05_cross_cohort_axis.json
 """
 import os, sys, json
 import numpy as np
-from common import DATA, load_tcga, load_gct, PURE16, strip_version
+from common import DATA, load_tcga, load_gct, PURE16
 
-X, y, pos, gk = load_tcga()
+X, y, pos, _ = load_tcga()
 gtex_breast = os.path.join(DATA, "gtex_breast_v10_reads.gct.gz")
 gtex_adip = os.path.join(DATA, "gtex_adipose_subcut_v10_reads.gct.gz")
 
@@ -653,8 +658,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (DATA, load_tcga, load_gct, fetch_metabric, pscore,
                     PANEL_C)
 
-X, y, pos, gk = load_tcga()
+X, y, pos, _ = load_tcga()
 syms = [g for g in PANEL_C if g in pos]
+assert set(syms) == set(PANEL_C), \
+    f"E15-GUARD: ausentes no TCGA: {sorted(set(PANEL_C) - set(syms))}"
 colC = [pos[g] for g in syms]
 # per-sample z (platform-invariant) on BOTH sides of the transfer:
 # train and test features must live in the same space
@@ -849,7 +856,6 @@ df4 = df[df["PAM50"] != "Normal"]
 p4 = chi2_contingency(pd.crosstab(df4["PAM50"], df4["capt"]))[1]
 
 # joint BH over the five-family tests + PAM50
-import time as _t
 all_p = dict(pvals)
 all_p["PAM50(with Normal-like)"] = p5
 nm_ = list(all_p)
@@ -893,7 +899,7 @@ No proprietary components. Outputs: results/09_clinical_models.json
 import os, sys, json, math, time, requests
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2_contingency, binomtest, spearmanr
+from scipy.stats import chi2_contingency, spearmanr
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
 
@@ -1153,6 +1159,9 @@ import numpy as np
 import pandas as pd
 import requests
 
+# single guarded implementation (E15-GUARD); re-exported for API compat
+from pipeline_utils import extract_gene_matrix  # noqa: F401
+
 DATA = os.environ.get("BCD_DATA_DIR", os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "data"))
 
@@ -1184,16 +1193,6 @@ def build_symbol_index(symbols_full, keep_mask):
     for i, s in enumerate(kept):
         idx.setdefault(s, i)
     return idx
-
-
-def extract_gene_matrix(mat_full_filtered, symbol_pos, wanted):
-    """mat (samples x filtered genes) -> samples x wanted. Raises on
-    missing symbols (axis-mismatch guard, see README)."""
-    missing = [g for g in wanted if g not in symbol_pos]
-    if missing:
-        raise KeyError(f"symbols absent from filtered axis: {missing}")
-    return np.ascontiguousarray(mat_full_filtered[:, [symbol_pos[g]
-                                                     for g in wanted]])
 
 
 def load_tcga(data_dir=DATA):
@@ -1314,17 +1313,10 @@ plt.rcParams.update({
 })
 
 data_path = os.path.join(RES, "08_clinical_subtypes.json")
-if os.path.exists(data_path):
-    data = json.load(open(data_path))
-    cap = data["pam50_capture"]
-else:
-    cap = {
-        "Basal": {"mean": 0.90, "n": 220},
-        "Her2": {"mean": 0.96, "n": 122},
-        "LumB": {"mean": 1.00, "n": 52},
-        "LumA": {"mean": 0.92, "n": 1577},
-        "Normal": {"mean": 0.67, "n": 9},
-    }
+if not os.path.exists(data_path):
+    sys.exit(f"[figure2] {data_path} ausente — rode 08_clinical_subtypes.py "
+             "antes.")
+cap = json.load(open(data_path))["pam50_capture"]
 
 order = ["Basal", "Her2", "LumB", "LumA", "Normal"]
 labels, n_str, vals = [], [], []
@@ -1788,16 +1780,17 @@ EXPECTED = {
     "07_transfer.json": {
         "gtex_normal_frac": 0.996, "metabric_frac_tumor": 0.935},
     "08_clinical_subtypes.json": {
-        "clinical_bh/histology": 1.34e-04, "clinical_bh/ER_STATUS": 1.61e-02,
-        "clinical_bh/PR_STATUS": 3.97e-02,
-        "pam50_chi2_with_normal": 2.25e-03,
-        "pam50_chi2_without_normal": 4.04e-02},
+        "clinical_bh/histology": (1.34e-04, "rel"),
+        "clinical_bh/ER_STATUS": (1.61e-02, "rel"),
+        "clinical_bh/PR_STATUS": (3.97e-02, "rel"),
+        "pam50_chi2_with_normal": (2.25e-03, "rel"),
+        "pam50_chi2_without_normal": (4.04e-02, "rel")},
     "09_clinical_models.json": {
         "overall_capture/LR": 0.924, "overall_capture/AXIS": 0.838,
         "hist_capture/LR/lobular/mean": 0.836,
         "hist_capture/AXIS/lobular/mean": 0.644,
-        "pam50_full_chi2/lr": 2.25e-03,
-        "pam50_er_validation/er_positive_basal": 0.027,
+        "pam50_full_chi2/lr": (2.25e-03, "rel"),
+        "pam50_er_validation/er_positive_basal": (0.027, "abs"),
         "pam50_er_validation/er_positive_lumA": 0.907,
         "split_half/LR@0.5/half_B": 0.930,
         "split_half/AXIS@t*/half_B": 0.848,
@@ -1834,18 +1827,20 @@ def main():
             print(f"  [skip] {jf}")
             continue
         d = json.load(open(p, encoding="utf-8"))
-        for path, exp in checks.items():
+        for path, spec in checks.items():
+            exp, mode = spec if isinstance(spec, tuple) else (spec, "auto")
             v = get(d, path)
-            # accuracies: absolute tolerance; p-values/chi2/BH (<<1):
-            # relative tolerance so the check stays meaningful at that scale
-            if abs(exp) < 0.05:
+            # mode "rel": p-values/chi2/BH — absolute tolerance is
+            # meaningless at that scale. "abs": accuracies/fractions.
+            # "auto": relative for small magnitudes, absolute otherwise.
+            if mode == "rel" or (mode == "auto" and abs(exp) < 0.05):
                 ok = math.isclose(v, exp, rel_tol=0.02)
             else:
                 ok = abs(v - exp) <= TOL
             n_ok += ok
             n_bad += (not ok)
             print(f"  [{'PASS' if ok else 'FAIL'}] {jf}::{path} = "
-                  f"{v:.6g} (esperado {exp})")
+                  f"{v:.6g} (esperado {exp}, tol {mode})")
     print(f"\n{n_ok} PASS / {n_bad} FAIL "
           f"({time.time()-t0:.0f}s)")
     sys.exit(0 if n_bad == 0 else 1)

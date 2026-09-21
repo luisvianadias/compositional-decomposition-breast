@@ -61,7 +61,7 @@ bars = ax.bar(x, vals, 0.48, color=C_ORANGE, alpha=0.9,
 for b, v in zip(bars, vals):
     ax.text(b.get_x() + b.get_width() / 2, v + 2.0, f"{v:.0f}%",
             ha="center", va="bottom", fontsize=7.5, fontweight="bold",
-            color="#B36B00")
+            color=C_TEXT)
 
 ax.axhline(50, color="#D95F02", ls="--", lw=0.9, alpha=0.6, zorder=2,
            label="50% (chance)")

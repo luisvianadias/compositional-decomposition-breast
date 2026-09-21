@@ -14,8 +14,9 @@ from common import (DATA, load_tcga, load_gct, fetch_metabric, pscore,
 
 X, y, pos, _ = load_tcga()
 syms = [g for g in PANEL_C if g in pos]
-assert set(syms) == set(PANEL_C), \
-    f"E15-GUARD: ausentes no TCGA: {sorted(set(PANEL_C) - set(syms))}"
+if set(syms) != set(PANEL_C):
+    raise SystemExit(f"E15-GUARD: ausentes no TCGA: "
+                     f"{sorted(set(PANEL_C) - set(syms))}")
 colC = [pos[g] for g in syms]
 # per-sample z (platform-invariant) on BOTH sides of the transfer:
 # train and test features must live in the same space
