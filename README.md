@@ -35,7 +35,11 @@ scripts/
   06_estimate_baseline.py # Sec 2.6: ESTIMATE port + panel comparison
   07_transfer.py          # Sec 2.4: TCGA-trained panel applied to GTEx/METABRIC
   08_clinical_subtypes.py # Sec 2.5: clinical BH family + PAM50 subtypes
-run_all.py
+  09_clinical_models.py   # Sec 2.4-2.5: axis-score rule (public second model),
+                          #            histology/PAM50 breakdowns, split-half
+  pipeline_utils.py       # E15-GUARD: safe panel extraction + randDE picker
+  test_guard.py, test_pipeline_utils.py, test_namespace_guard.py
+run_all.py                # orchestrator + verification manifest (33 checks)
 ```
 
 ## Reproduction
@@ -47,7 +51,8 @@ python scripts/run_all.py            # downloads data on first run (~10 min)
 
 Every script writes JSON outputs to `results/` and uses fixed seeds
 (42/123/777). The expected headline numbers (abstract) are embedded in
-`run_all.py` as a verification manifest.
+`run_all.py` as a verification manifest (33 checks, run automatically at
+the end of the pipeline).
 
 ## Method summary
 

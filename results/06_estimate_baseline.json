@@ -1,0 +1,10 @@
+{
+  "cv_acc": {
+    "stromal_only": 0.8176977877765278,
+    "estimate_only": 0.8636920384951882,
+    "panel": 0.98416447944007,
+    "stromal_plus_panel": 0.98416447944007
+  },
+  "additive_delta_panel_minus_combo": 0.0,
+  "note": "ESTIMATE ported from the reference R implementation (stable-rank approximation)"
+}

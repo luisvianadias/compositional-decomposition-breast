@@ -13,6 +13,7 @@ from sklearn.metrics import roc_auc_score
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import load_tcga, pscore, PANEL_B, PANEL_C
+from pipeline_utils import pick_nearest_non_panel
 
 t0 = time.time()
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -67,21 +68,15 @@ for i, (tr, te) in enumerate(splits):
         arms[nm]["acc"][i], arms[nm]["auc"][i] = a, u
 
     # randDE: non-adipocyte gene with nearest training-fold |log2FC|
+    # (E15-GUARD: matching por símbolo — gk é Ensembl; ver pipeline_utils)
     fat = set(PANEL_B)
-    acc_rd, auc_rd = [], []
-    for d in range(5):
-        rng_rd = np.random.default_rng(9000 + d * 100 + i)
-        rd = []
-        for gp in colB:
-            for c in np.argsort(np.abs(lfc - lfc[gp])):
-                c = int(c)
-                if gk[c] not in fat and c not in rd:
-                    rd.append(c)
-                    break
-        a, u = lr_acc(Xtr[:, rd], ytr, Xte[:, rd], yte)
-        acc_rd.append(a); auc_rd.append(u)
-    arms["randDE"]["acc"][i] = float(np.mean(acc_rd))
-    arms["randDE"]["auc"][i] = float(np.mean(auc_rd))
+    sym_of = {}
+    for s, ci in pos.items():
+        sym_of.setdefault(ci, s)
+    rd = pick_nearest_non_panel(lfc, colB, fat, sym_of)
+    a, u = lr_acc(Xtr[:, rd], ytr, Xte[:, rd], yte)
+    arms["randDE"]["acc"][i] = a
+    arms["randDE"]["auc"][i] = u
 
     # null: uniform random 10-gene panels (median over B draws per split)
     rng = np.random.default_rng(42)

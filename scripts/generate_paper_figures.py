@@ -54,10 +54,16 @@ nested = json.load(open(os.path.join(DIR, "..", "results",
                                      "nested_compression.json")))
 axis = json.load(open(os.path.join(DIR, "..", "results",
                                    "05_cross_cohort_axis.json")))
+ablation = json.load(open(os.path.join(DIR, "..", "results",
+                                       "04_adipose_ablation.json")))
 
 K = [1, 2, 3, 5, 10, 20]
 curve = [nested[f"k{k}"]["acc"] * 100 for k in K]
 full_acc = nested["full"]["acc"] * 100
+panel_accs = {n: nested[n]["acc"] * 100
+              for n in ("panelA", "panelB", "panelC", "randDE")}
+resid_acc = ablation["after"]["acc"] * 100
+resid_auc = ablation["after"]["auc"]
 null_draws = np.array(nested["null_acc_per_draw"]) * 100
 null_med = float(np.median(null_draws))
 null_q25, null_q75 = [float(q) for q in
@@ -132,7 +138,7 @@ axC = fig.add_subplot(gs[1, 0])
 panel_tag(axC, "C")
 axC.grid(axis="x", color=C_GRID, lw=0.6, zorder=0)
 y_pos = [1, 0]
-for y, val, col in zip(y_pos, [98.9, 90.9], [C_BLUE, C_YELLOW]):
+for y, val, col in zip(y_pos, [full_acc, resid_acc], [C_BLUE, C_YELLOW]):
     axC.hlines(y, xmin=82, xmax=val, color=col, lw=2.0, zorder=2)
     axC.plot(val, y, "o", color=col, ms=7, mec="black", mew=0.7, zorder=3)
     axC.text(val + 0.6, y, f"{val:.1f}%", va="center", ha="left",
@@ -142,8 +148,9 @@ axC.set_yticklabels(["Full model", "Residual model\n(non-adipose)"],
                     fontsize=7.2)
 axC.set_xlim(82, 103)
 axC.set_xlabel("Accuracy (%)")
-axC.text(0.06, 0.14, "AUC: 0.999 -> 0.950", transform=axC.transAxes,
-         fontsize=6.8, color="#444444")
+axC.text(0.06, 0.14,
+         f"AUC: {ablation['before']['auc']:.3f} -> {resid_auc:.3f}",
+         transform=axC.transAxes, fontsize=6.8, color="#444444")
 
 axD = fig.add_subplot(gs[1, 1])
 panel_tag(axD, "D")
@@ -182,16 +189,17 @@ def conn_arrow(start, end):
                                   color="#333333", zorder=1))
 
 
-node_box(0.8, 8.2, 8.4, 1.4, "Full Transcriptome: 98.9% (AUC 0.999)",
-         "#EAEAEA")
+node_box(0.8, 8.2, 8.4, 1.4,
+         f"Full Transcriptome: {full_acc:.1f}% "
+         f"(AUC {ablation['before']['auc']:.3f})", "#EAEAEA")
 conn_arrow((3.0, 8.2), (2.5, 7.0))
 conn_arrow((7.0, 8.2), (7.5, 7.0))
 node_box(0.2, 4.8, 4.5, 2.2,
-         "Adipose-Stromal Axis\nPanel C: 98.7%\n- Adipocyte loss\n"
-         "- Stroma exp.", "#D9EAF7")
+         f"Adipose-Stromal Axis\nPanel C: {panel_accs['panelC']:.1f}%\n"
+         "- Adipocyte loss\n- Stroma exp.", "#D9EAF7")
 node_box(5.3, 4.8, 4.5, 2.2,
-         "Residual Signal\n90.9% (AUC 0.950)\n- Tumor intrinsic\n"
-         "- Non-adipose", "#FBE8D6")
+         f"Residual Signal\n{resid_acc:.1f}% (AUC {resid_auc:.3f})\n"
+         "- Tumor intrinsic\n- Non-adipose", "#FBE8D6")
 conn_arrow((2.45, 4.8), (2.45, 3.2))
 node_box(0.2, 1.6, 4.5, 1.6,
          "Tissue Architecture\nLobular < Ductal\n(p <= 1.7e-4)", "#EBF4FA")
@@ -219,11 +227,11 @@ axS.set_xlim(80, 101)
 
 lines_data = [
     (null_med, C_NULL, "--", 1.1),
-    (94.7, C_BLUE, ":", 1.2),
-    (95.8, C_BLUE, "-.", 1.2),
-    (98.1, C_YELLOW, "--", 1.2),
-    (98.7, C_GREEN, "-", 1.4),
-    (98.9, "#111111", "-", 1.4),
+    (panel_accs["panelA"], C_BLUE, ":", 1.2),
+    (panel_accs["panelB"], C_BLUE, "-.", 1.2),
+    (panel_accs["randDE"], C_YELLOW, "--", 1.2),
+    (panel_accs["panelC"], C_GREEN, "-", 1.4),
+    (full_acc, "#111111", "-", 1.4),
 ]
 for x, c, ls, lw in lines_data:
     axS.axvline(x, color=c, lw=lw, ls=ls, zorder=3)
@@ -232,15 +240,15 @@ legend_handles = [
     Line2D([0], [0], color=C_NULL, lw=1.2, ls="--",
            label=f"Null median ({null_med:.1f}%)"),
     Line2D([0], [0], color=C_BLUE, lw=1.2, ls=":",
-           label="Panel A (94.7%)"),
+           label=f"Panel A ({panel_accs['panelA']:.1f}%)"),
     Line2D([0], [0], color=C_BLUE, lw=1.2, ls="-.",
-           label="Panel B (95.8%)"),
+           label=f"Panel B ({panel_accs['panelB']:.1f}%)"),
     Line2D([0], [0], color=C_YELLOW, lw=1.2, ls="--",
-           label="randDE (98.1%)"),
+           label=f"randDE ({panel_accs['randDE']:.1f}%)"),
     Line2D([0], [0], color=C_GREEN, lw=1.4, ls="-",
-           label="Panel C (98.7%)"),
+           label=f"Panel C ({panel_accs['panelC']:.1f}%)"),
     Line2D([0], [0], color="#111111", lw=1.4, ls="-",
-           label="Full model (98.9%)"),
+           label=f"Full model ({full_acc:.1f}%)"),
 ]
 axS.legend(
     handles=legend_handles, loc="upper left", frameon=True,
@@ -249,10 +257,12 @@ axS.legend(
 )
 
 null_max = float(null_draws.max())
-n_ge = int((null_draws >= 98.7).sum())
+n_ge = int((null_draws >= panel_accs["panelC"]).sum())
+p_emp = (n_ge + 1) / (len(null_draws) + 1)
 axS.annotate(
-    f"Panel C & Full\n0/{len(null_draws)} null >= 98.7%\n"
-    f"(empirical P < 0.002; null max = {null_max:.1f}%)",
+    f"Panel C & Full\n{n_ge}/{len(null_draws)} null >= "
+    f"{panel_accs['panelC']:.1f}%\n"
+    f"(empirical P = {p_emp:.3f}; null max = {null_max:.1f}%)",
     xy=(98.8, max_h * 0.75),
     xytext=(93.5, max_h * 0.95),
     fontsize=6.8, color="#222222", ha="center", va="center",

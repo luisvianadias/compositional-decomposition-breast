@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Downloads all public data (skips files already present).
-- GDC API query -> manifest -> TCGA-BRCA STAR counts (open access)
+- GDC API query -> manifest -> TCGA-BRCA STAR counts (open access),
+  canonical cohort: all normals + seed-42 draw of 520 tumors (631 files)
 - GTEx v10 gct.gz (breast, adipose subcutaneous) from public GCS bucket
 - genefu ssp2006 centroids (GitHub, bhklab/genefu)
 - ESTIMATE reference package (SourceForge)
@@ -83,26 +84,51 @@ if not exists(man, 100):
         w.writerows(rows)
     print(f"  manifesto: {len(rows)} arquivos")
 
-# ---- GDC: download counts (all tumors+normals; skip existing) ----
+# ---- GDC: download counts (cohort: all normals + seeded tumor draw) ----
+# Canonical cohort (matches the manuscript: 518 tumors + 113 normals = 631):
+# all "Solid Tissue Normal" files + a random 520-file draw of "Primary
+# Tumor" (random.Random(42).shuffle), keeping the FIRST file per barcode.
+# Two drawn barcodes have 2 GDC file entries (reprocessed workflow); the
+# first in draw order is the canonical file (byte-verified, see
+# data/PROVENANCE.md).
+import random
+
 gdc_dir = os.path.join(DATA, "gdc_brca")
 os.makedirs(gdc_dir, exist_ok=True)
 rows = list(csv.DictReader(open(man), delimiter="\t"))
-todo = [r for r in rows
+normals = [r for r in rows if r["sample_type"] == "Solid Tissue Normal"]
+tumors = [r for r in rows if r["sample_type"] == "Primary Tumor"]
+random.Random(42).shuffle(tumors)
+cohort, seen = [], set()
+for r in normals + tumors[:520]:
+    if r["sample_barcode"] not in seen:
+        seen.add(r["sample_barcode"])
+        cohort.append(r)
+print(f"  coorte: {len(cohort)} amostras "
+      f"({sum(1 for r in cohort if r['sample_type'] != 'Solid Tissue Normal')}"
+      f" tumores + "
+      f"{sum(1 for r in cohort if r['sample_type'] == 'Solid Tissue Normal')}"
+      f" normais)")
+todo = [r for r in cohort
         if not exists(os.path.join(gdc_dir, r["sample_barcode"] + ".tsv"),
                       1_000_000)]
-print(f"  GDC counts: {len(rows) - len(todo)} presentes, "
+print(f"  GDC counts: {len(cohort) - len(todo)} presentes, "
       f"{len(todo)} a baixar (~10 min na primeira vez)")
 t0 = time.time()
 done = 0
+failed = []
 
 def dl(row):
     dest = os.path.join(gdc_dir, row["sample_barcode"] + ".tsv")
-    try:
-        urllib.request.urlretrieve(
-            f"https://api.gdc.cancer.gov/data/{row['file_id']}", dest)
-        return True
-    except Exception:
-        return False
+    for attempt in range(3):
+        try:
+            urllib.request.urlretrieve(
+                f"https://api.gdc.cancer.gov/data/{row['file_id']}", dest)
+            return True
+        except Exception:
+            time.sleep(2 * (attempt + 1))
+    failed.append(row["sample_barcode"])
+    return False
 
 with ThreadPoolExecutor(max_workers=12) as ex:
     for ok in ex.map(dl, todo):
@@ -110,4 +136,7 @@ with ThreadPoolExecutor(max_workers=12) as ex:
         if done % 50 == 0:
             print(f"    {done}/{len(todo)} ({time.time()-t0:.0f}s)",
                   flush=True)
+if failed:
+    raise SystemExit(f"FALHARAM {len(failed)} downloads "
+                     f"(reexecute para retomar): {sorted(failed)[:10]} ...")
 print("  GDC download concluido")

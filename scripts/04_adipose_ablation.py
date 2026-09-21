@@ -54,7 +54,8 @@ res = {
     "after": {"acc": float(np.mean(acc_a)), "auc": float(np.mean(auc_a))},
     "pc1_original": {"var": float(p1.explained_variance_ratio_[0]),
                      "auc": float(pc1_auc_full), "sep_sd": float(sep_full)},
-    "pc1_residual": {"auc": float(pc1_auc_r), "sep_sd": float(sep_r)},
+    "pc1_residual": {"var": float(p1r.explained_variance_ratio_[0]),
+                     "auc": float(pc1_auc_r), "sep_sd": float(sep_r)},
 }
 print(f"antes: {res['before']['acc']:.1%}/{res['before']['auc']:.3f} | "
       f"depois: {res['after']['acc']:.1%}/{res['after']['auc']:.3f}")
