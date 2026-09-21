@@ -1,7 +1,7 @@
 {
-  "gtex_normal_frac": 0.9941634241245136,
+  "gtex_normal_frac": 0.9961089494163424,
   "gtex_n": 514,
-  "metabric_frac_tumor": 0.9929292929292929,
+  "metabric_frac_tumor": 0.9353535353535354,
   "metabric_n": 1980,
   "panel": [
     "ADIPOQ",

@@ -44,6 +44,12 @@ the GDC file identifiers.
   threshold calibrated on TCGA out-of-fold scores; script
   `09_clinical_models.py`). The private model will not be released; no
   manuscript number depends on it anymore.
+- Follow-up audit fixes (2026-09-20): ESTIMATE gene-set membership was
+  misaligned to the expression matrix (scores now computed over the
+  correct genes; stromal 81.9%, combo 98.1%); `07_transfer.py` now uses
+  the same per-sample z-score space on both sides of the transfer
+  (GTEx 99.6%, METABRIC 93.5%); null AUC quantiles accumulate over all
+  15 splits; xarray pinned (required by rdata for R arrays).
 - The "high centroid-separation confidence stratum" of the earlier
   manuscript version was removed: in the private script the margin was
   computed as (second-best − best) centroid correlation, so

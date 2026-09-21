@@ -31,10 +31,10 @@ EXPECTED = {
         "tcga_tumor": -1.374, "tcga_adjacent_normal": 0.400,
         "gtex_breast": 0.388, "gtex_adipose": 0.696},
     "06_estimate_baseline.json": {
-        "cv_acc/stromal_only": 0.818, "cv_acc/panel": 0.984,
-        "cv_acc/stromal_plus_panel": 0.984},
+        "cv_acc/stromal_only": 0.819, "cv_acc/panel": 0.984,
+        "cv_acc/stromal_plus_panel": 0.981},
     "07_transfer.json": {
-        "gtex_normal_frac": 0.994, "metabric_frac_tumor": 0.993},
+        "gtex_normal_frac": 0.996, "metabric_frac_tumor": 0.935},
     "08_clinical_subtypes.json": {
         "clinical_bh/histology": 1.34e-04, "clinical_bh/ER_STATUS": 1.61e-02,
         "clinical_bh/PR_STATUS": 3.97e-02,
@@ -53,13 +53,16 @@ EXPECTED = {
 }
 TOL = 0.02
 
+# script -> result filename (03 writes nested_compression.json, unprefixed)
+OUT_NAMES = {"03_nested_compression.py": "nested_compression.json"}
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
     t0 = time.time()
     for script in PIPELINE:
-        out = os.path.join(RES, script[:-3] + ".json")
+        out = os.path.join(RES, OUT_NAMES.get(script, script[:-3] + ".json"))
         if script.startswith(("01", "02")):
             print(f"[run ] {script} (idempotente: baixa apenas o que falta)",
                   flush=True)

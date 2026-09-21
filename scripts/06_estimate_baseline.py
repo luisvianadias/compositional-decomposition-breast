@@ -30,8 +30,9 @@ samples = pd.read_csv(os.path.join(data_dir, "tcga_brca_samples.tsv"),
 y = (samples["type"] == "tumor").to_numpy().astype(int)
 lib = counts.sum(axis=0, keepdims=True)
 lcpm = np.log2(counts / lib * 1e6 + 1.0)
-gdc = os.path.join(data_dir, "gdc_brca", sorted(
-    os.listdir(os.path.join(data_dir, "gdc_brca")))[0])
+gdc_dir = os.path.join(data_dir, "gdc_brca")
+gdc = os.path.join(gdc_dir, sorted(
+    f for f in os.listdir(gdc_dir) if f.endswith(".tsv"))[0])
 tsv = pd.read_csv(gdc, sep="\t", comment="#",
                   usecols=["gene_id", "gene_name"]).dropna()
 tsv["gene_id"] = tsv["gene_id"].str.split(".").str[0]
@@ -43,8 +44,9 @@ for i, s in enumerate(sym_all):
         sym_pos[s] = i
 
 mask = np.isin(sym_all, common)
-Xg = lcpm[mask]
-gsyms = np.array(sorted(sym_all[mask]))
+order_g = np.argsort(sym_all[mask], kind="stable")
+Xg = lcpm[mask][order_g]
+gsyms = np.array(sym_all[mask][order_g])   # sorted; rows aligned to gsyms
 ng = Xg.shape[0]
 ranks = np.argsort(np.argsort(Xg, axis=0, kind="stable"),
                    axis=0).astype(np.float64) + 1.0
@@ -84,8 +86,7 @@ Zp = pscore(np.ascontiguousarray(Xp))
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 feats = {"stromal_only": stromal.reshape(-1, 1),
          "estimate_only": estimate.reshape(-1, 1),
-         "panel": Zp,
-         "stromal_plus_panel": np.column_stack([stromal, Zp])}
+         "panel": Zp}
 accs = {}
 for name, F in feats.items():
     a = []
@@ -95,11 +96,24 @@ for name, F in feats.items():
     accs[name] = float(np.mean(a))
     print(f"  CV acc [{name}]: {np.mean(a):.1%}")
 
-# additive test: panel vs stromal+panel, paired 5-fold
+# combo: stromal z-scored with train-fold stats so the L2 penalty sees both
+# features on comparable scales (panel is already per-gene z)
+a = []
+for tr, te in skf.split(Zp, y):
+    mu_s, sd_s = stromal[tr].mean(), stromal[tr].std() + 1e-6
+    F2 = np.column_stack([(stromal - mu_s) / sd_s, Zp])
+    lr2 = LogisticRegression(max_iter=2000).fit(F2[tr], y[tr])
+    a.append(lr2.score(F2[te], y[te]))
+accs["stromal_plus_panel"] = float(np.mean(a))
+print(f"  CV acc [stromal_plus_panel]: {np.mean(a):.1%}")
+
+# additive test: panel vs stromal+panel, paired 5-fold (stromal z-scored
+# with train-fold stats)
 diffs = []
 for tr, te in skf.split(Zp, y):
     lr1 = LogisticRegression(max_iter=2000).fit(Zp[tr], y[tr])
-    F2 = np.column_stack([stromal, Zp])
+    mu_s, sd_s = stromal[tr].mean(), stromal[tr].std() + 1e-6
+    F2 = np.column_stack([(stromal - mu_s) / sd_s, Zp])
     lr2 = LogisticRegression(max_iter=2000).fit(F2[tr], y[tr])
     diffs.append(lr1.score(Zp[te], y[te]) - lr2.score(F2[te], y[te]))
 

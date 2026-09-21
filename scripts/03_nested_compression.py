@@ -44,7 +44,7 @@ arms = {n: {"acc": np.zeros(len(splits)), "auc": np.zeros(len(splits))}
         for n in ["full", "panelA", "panelB", "panelC", "randDE"]
         + [f"k{k}" for k in KS] + ["null"]}
 null_draws_acc = np.zeros(N_NULL)
-aucs_null = np.zeros(N_NULL)
+aucs_null_acc = np.zeros(N_NULL)
 
 for i, (tr, te) in enumerate(splits):
     Xtr, Xte, ytr, yte = X[tr], X[te], y[tr], y[te]
@@ -81,6 +81,7 @@ for i, (tr, te) in enumerate(splits):
     # null: uniform random 10-gene panels (median over B draws per split)
     rng = np.random.default_rng(42)
     draws = np.zeros(N_NULL)
+    aucs_null = np.zeros(N_NULL)
     for b in range(N_NULL):
         cols = rng.choice(N_GENES, size=NULL_K, replace=False)
         m = LogisticRegression(max_iter=2000).fit(Ztr[:, cols], ytr)
@@ -89,6 +90,7 @@ for i, (tr, te) in enumerate(splits):
     arms["null"]["acc"][i] = float(draws.mean())
     arms["null"]["auc"][i] = float(aucs_null.mean())
     null_draws_acc += draws / len(splits)
+    aucs_null_acc += aucs_null / len(splits)
 
     if (i + 1) % 5 == 0:
         print(f"  split {i+1}/{len(splits)}", flush=True)
@@ -104,7 +106,7 @@ res = {n: {"acc": float(v["acc"].mean()), "acc_std": float(v["acc"].std()),
        for n, v in arms.items()}
 res["null_per_draw_overall_mean"] = float(null_draws_acc.mean())
 res["null_acc_per_draw"] = [float(x) for x in null_draws_acc]
-res["null_auc_per_draw_mean_iqr"] = [float(np.quantile(aucs_null, q))
+res["null_auc_per_draw_mean_iqr"] = [float(np.quantile(aucs_null_acc, q))
                                      for q in (0.25, 0.5, 0.75)]
 json.dump(res, open(os.path.join(OUT, "nested_compression.json"), "w"),
           indent=2)

@@ -156,7 +156,8 @@ axD = fig.add_subplot(gs[1, 1])
 panel_tag(axD, "D")
 axD.grid(axis="y", color=C_GRID, lw=0.6, zorder=0)
 pops = ["TCGA\ntumor", "TCGA\nnormal", "GTEx\nbreast", "GTEx\nadipose"]
-valsD = [-1.374, 0.400, 0.388, 0.696]
+valsD = [axis["tcga_tumor"], axis["tcga_adjacent_normal"],
+         axis["gtex_breast"], axis["gtex_adipose"]]
 colsD = [C_ORANGE, C_BLUE, C_GREEN, C_YELLOW]
 bars = axD.bar(pops, valsD, color=colsD, width=0.55, edgecolor="#222222",
                lw=0.6, zorder=2, alpha=0.9)

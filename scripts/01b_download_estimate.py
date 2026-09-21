@@ -14,11 +14,13 @@ if os.path.exists(os.path.join(ext_data, "SI_geneset.gmt")):
     print("[skip] estimate_pkg already extracted")
     sys.exit(0)
 
-if not os.path.exists(DEST):
+if not os.path.exists(DEST) or os.path.getsize(DEST) < 1_000_000:
     print("[get ] estimate_r.tar.gz (~3.7 MB, SourceForge)")
-    urllib.request.urlretrieve(
+    req = urllib.request.Request(
         "https://sourceforge.net/projects/estimateproject/files/latest/"
-        "download", DEST)
+        "download", headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=300) as r, open(DEST, "wb") as f:
+        f.write(r.read())
 
 print("[extract] estimate_pkg...")
 with tarfile.open(DEST) as t:

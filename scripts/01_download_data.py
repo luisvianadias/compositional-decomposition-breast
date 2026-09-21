@@ -37,11 +37,14 @@ fetch("https://raw.githubusercontent.com/bhklab/genefu/master/data/"
 
 # ---- ESTIMATE reference package ----
 est = os.path.join(DATA, "estimate_r.tar.gz")
-if not exists(est, 100000):
+if not exists(est, 1_000_000):
     print("  [get ] estimate_r.tar.gz (SourceForge)")
-    urllib.request.urlretrieve(
+    req = urllib.request.Request(
         "https://sourceforge.net/projects/estimateproject/files/latest/"
-        "download", est)
+        "download", headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=300) as r, \
+            open(est, "wb") as f:
+        f.write(r.read())
 import tarfile
 pkg = os.path.join(DATA, "estimate_pkg", "estimate", "inst", "extdata")
 if not os.path.exists(os.path.join(pkg, "SI_geneset.gmt")):

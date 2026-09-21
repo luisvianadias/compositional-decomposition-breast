@@ -13,25 +13,31 @@ from common import (DATA, load_tcga, load_gct, fetch_metabric, pscore,
                     PANEL_C)
 
 X, y, pos, gk = load_tcga()
-colC = [pos[g] for g in PANEL_C if g in pos]
-muC, sdC = X[:, colC].mean(0), X[:, colC].std(0) + 1e-6
-Ftr = np.ascontiguousarray((X[:, colC] - muC) / sdC)
-lr = LogisticRegression(max_iter=2000).fit(Ftr, y)
+syms = [g for g in PANEL_C if g in pos]
+colC = [pos[g] for g in syms]
+# per-sample z (platform-invariant) on BOTH sides of the transfer:
+# train and test features must live in the same space
+Ztc = pscore(X[:, colC])
+lr = LogisticRegression(max_iter=2000).fit(Ztc, y)
 
 # GTEx normal breast
 Lb, gpos_b, n_b = load_gct(os.path.join(DATA, "gtex_breast_v10_reads.gct.gz"))
-idx_b = [gpos_b[g] for g in PANEL_C if g in gpos_b]
-syms_b = [g for g in PANEL_C if g in gpos_b]
-Fte_b = np.ascontiguousarray(((Lb[idx_b, :] - muC[:len(idx_b), None]) /
-                              (sdC[:len(idx_b), None] + 1e-6 + 1e-6)).T)
+syms_b = [g for g in syms if g in gpos_b]
+if syms_b != syms:
+    raise SystemExit(f"E15-GUARD: genes ausentes no GTEx: "
+                     f"{sorted(set(syms) - set(syms_b))}")
+Fte_b = pscore(Lb[[gpos_b[g] for g in syms_b], :].T.astype(np.float32))
 p_gtex = lr.predict_proba(Fte_b)[:, 1]
 gtex_normal = float((p_gtex < 0.5).mean())
 print(f"GTEx normal breast: {gtex_normal:.1%} called normal (n={n_b})")
 
-# METABRIC tumors
-mm = fetch_metabric(PANEL_C)
-idx_m = mm[PANEL_C].dropna().index
-Zm = pscore(mm.loc[idx_m, PANEL_C].to_numpy(dtype=np.float32))
+# METABRIC tumors (per-sample z, same gene order; loud guard)
+mm = fetch_metabric(syms)
+missing = [g for g in syms if g not in mm.columns]
+if missing:
+    raise SystemExit(f"E15-GUARD: genes ausentes no METABRIC: {missing}")
+idx_m = mm[syms].dropna().index
+Zm = pscore(mm.loc[idx_m, syms].to_numpy(dtype=np.float32))
 p_met = lr.predict_proba(Zm)[:, 1]
 met_tumor = float((p_met > 0.5).mean())
 print(f"METABRIC tumors: {met_tumor:.1%} called tumor (n={len(p_met)})")

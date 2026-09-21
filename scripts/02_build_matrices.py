@@ -36,5 +36,5 @@ np.savez_compressed(os.path.join(DATA, "tcga_brca_counts.npz"),
                     counts=X, genes=genes_ref.to_numpy())
 pd.DataFrame({"barcode": barcodes, "type": types}).to_csv(
     os.path.join(DATA, "tcga_brca_samples.tsv"), sep="\t", index=False)
-print(f"matriz: {X.shape[1]} genes x {X.shape[0]} amostras -> "
+print(f"matriz: {X.shape[0]} genes x {X.shape[1]} amostras -> "
       f"tcga_brca_counts.npz")

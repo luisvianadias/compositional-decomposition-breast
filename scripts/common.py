@@ -73,7 +73,8 @@ def load_tcga(data_dir=DATA):
 
 def _first_gdc_tsv(data_dir):
     gdc = os.path.join(data_dir, "gdc_brca")
-    return os.path.join(gdc, sorted(os.listdir(gdc))[0])
+    return os.path.join(gdc, sorted(
+        f for f in os.listdir(gdc) if f.endswith(".tsv"))[0])
 
 
 def load_gct(path):
