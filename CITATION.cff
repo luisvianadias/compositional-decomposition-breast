@@ -9,6 +9,7 @@ version: v1.1.4
 date-released: "2026-09-20"
 identifiers:
   - type: doi
-    value: "10.5281/zenodo.22866051"
+    value: "10.5281/zenodo.22866831"
+    description: v1.1.4 (current release)
   - type: url
-    value: "https://github.com/luisvianadias/compositional-decomposition-breast/tree/v1.1.0"
+    value: "https://github.com/luisvianadias/compositional-decomposition-breast/tree/v1.1.4"
