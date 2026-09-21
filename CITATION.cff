@@ -1,9 +1,9 @@
 cff-version: 1.1.0
 message: "If you use this software, please cite it as below."
 authors:
-- family-names: Viana Dias
-  given-names: Luis Mario
-orcid: https://orcid.org/0009-0005-7687-9319
-title:
+  - family-names: Viana Dias
+    given-names: Luis Mario
+    orcid: "https://orcid.org/0009-0005-7687-9319"
+title: "Adipose-associated compositional axis in bulk breast tumor-normal separation: reproduction pipeline"
 version: v1.1.0
-date-released: 2026-09-20
+date-released: "2026-09-20"
