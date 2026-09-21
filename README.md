@@ -2,6 +2,8 @@
 
 <a href="https://doi.org/10.5281/zenodo.22862098"><img src="https://zenodo.org/badge/1378400502.svg" alt="DOI"></a>
 
+**Preprint:** <https://doi.org/10.5281/zenodo.22874475>
+
 
 Reproduction code for the manuscript quantifying how much of the bulk
 transcriptomic boundary between normal and tumor breast tissue is captured
