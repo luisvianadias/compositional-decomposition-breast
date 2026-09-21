@@ -12,7 +12,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.metrics import roc_auc_score
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import load_tcga, pscore, PANEL_B, PANEL_C
+from common import load_tcga, PANEL_B, PANEL_C
 from pipeline_utils import pick_nearest_non_panel
 
 t0 = time.time()
@@ -20,10 +20,8 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(DIR, "..", "results")
 os.makedirs(OUT, exist_ok=True)
 
-X, y, pos, gk = load_tcga()
+X, y, pos, _ = load_tcga()
 N_GENES = X.shape[1]
-abs_lfc = np.abs(X[y == 1].mean(0) - X[y == 0].mean(0))
-rank_global = np.argsort(-abs_lfc)
 
 PANEL_A = PANEL_B[:12]
 KS = [1, 2, 3, 5, 10, 20]
@@ -45,6 +43,13 @@ arms = {n: {"acc": np.zeros(len(splits)), "auc": np.zeros(len(splits))}
         + [f"k{k}" for k in KS] + ["null"]}
 null_draws_acc = np.zeros(N_NULL)
 aucs_null_acc = np.zeros(N_NULL)
+
+# null: 500 uniformly random 10-gene panels, drawn ONCE and paired across
+# all splits (each panel evaluated on 15 test folds). The manuscript
+# quotes the median of the pooled per-draw accuracies.
+rng_null = np.random.default_rng(42)
+null_panels = np.array([rng_null.choice(N_GENES, size=NULL_K, replace=False)
+                        for _ in range(N_NULL)])
 
 for i, (tr, te) in enumerate(splits):
     Xtr, Xte, ytr, yte = X[tr], X[te], y[tr], y[te]
@@ -78,12 +83,11 @@ for i, (tr, te) in enumerate(splits):
     arms["randDE"]["acc"][i] = a
     arms["randDE"]["auc"][i] = u
 
-    # null: uniform random 10-gene panels (median over B draws per split)
-    rng = np.random.default_rng(42)
+    # null: fixed panel set, per-split accuracies pooled across splits
     draws = np.zeros(N_NULL)
     aucs_null = np.zeros(N_NULL)
     for b in range(N_NULL):
-        cols = rng.choice(N_GENES, size=NULL_K, replace=False)
+        cols = null_panels[b]
         m = LogisticRegression(max_iter=2000).fit(Ztr[:, cols], ytr)
         draws[b] = m.score(Zte[:, cols], yte)
         aucs_null[b] = roc_auc_score(yte, m.predict_proba(Zte[:, cols])[:, 1])

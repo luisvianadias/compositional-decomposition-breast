@@ -25,4 +25,11 @@ expected = mat_filtered[:, cols]
 result = extract_gene_matrix(mat_filtered, sym_pos, wanted)
 assert result.shape == (n_samples, 3), f"shape {result.shape}"
 assert (result == expected).all(), "values mismatch"
+
+# test: raises KeyError on a symbol absent from the filtered axis
+try:
+    extract_gene_matrix(mat_filtered, sym_pos, ["GENE9999_MISSING"])
+    raise AssertionError("expected KeyError for missing symbol")
+except KeyError:
+    pass
 print(f"E15-GUARD regression test: PASS")

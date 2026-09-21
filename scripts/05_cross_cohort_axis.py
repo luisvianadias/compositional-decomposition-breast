@@ -8,7 +8,6 @@ import numpy as np
 from common import DATA, load_tcga, load_gct, PURE16, strip_version
 
 X, y, pos, gk = load_tcga()
-_, _, n_tcga = None, None, X.shape[0]
 gtex_breast = os.path.join(DATA, "gtex_breast_v10_reads.gct.gz")
 gtex_adip = os.path.join(DATA, "gtex_adipose_subcut_v10_reads.gct.gz")
 

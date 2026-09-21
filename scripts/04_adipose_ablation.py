@@ -41,12 +41,15 @@ for tr, te in splits:
 
 p1 = PCA(n_components=1, random_state=0).fit(Ztr)
 pc1_full = p1.transform(Ztr)[:, 0]
-pc1_auc_full = roc_auc_score(y[tr], pc1_full)
+# PC1 direction is sign-indeterminate (SVD): orient the AUC upward
+auc_full = roc_auc_score(y[tr], pc1_full)
+pc1_auc_full = max(auc_full, 1.0 - auc_full)
 sep_full = abs(pc1_full[y[tr] == 1].mean() - pc1_full[y[tr] == 0].mean()) / \
            pc1_full.std()
 p1r = PCA(n_components=1, random_state=0).fit(Ztr_r)
 pc1_r = p1r.transform(Ztr_r)[:, 0]
-pc1_auc_r = roc_auc_score(y[tr], pc1_r)
+auc_r = roc_auc_score(y[tr], pc1_r)
+pc1_auc_r = max(auc_r, 1.0 - auc_r)
 sep_r = abs(pc1_r[y[tr] == 1].mean() - pc1_r[y[tr] == 0].mean()) / pc1_r.std()
 
 res = {

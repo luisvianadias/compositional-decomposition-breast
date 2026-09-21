@@ -1,6 +1,6 @@
 # Scripts
 
-Transcrição de 20 arquivos `.py` de `scripts/`.
+Transcrição de 18 arquivos `.py` de `scripts/`.
 
 ---
 
@@ -46,11 +46,14 @@ fetch("https://raw.githubusercontent.com/bhklab/genefu/master/data/"
 
 # ---- ESTIMATE reference package ----
 est = os.path.join(DATA, "estimate_r.tar.gz")
-if not exists(est, 100000):
+if not exists(est, 1_000_000):
     print("  [get ] estimate_r.tar.gz (SourceForge)")
-    urllib.request.urlretrieve(
+    req = urllib.request.Request(
         "https://sourceforge.net/projects/estimateproject/files/latest/"
-        "download", est)
+        "download", headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=300) as r, \
+            open(est, "wb") as f:
+        f.write(r.read())
 import tarfile
 pkg = os.path.join(DATA, "estimate_pkg", "estimate", "inst", "extdata")
 if not os.path.exists(os.path.join(pkg, "SI_geneset.gmt")):
@@ -172,11 +175,13 @@ if os.path.exists(os.path.join(ext_data, "SI_geneset.gmt")):
     print("[skip] estimate_pkg already extracted")
     sys.exit(0)
 
-if not os.path.exists(DEST):
+if not os.path.exists(DEST) or os.path.getsize(DEST) < 1_000_000:
     print("[get ] estimate_r.tar.gz (~3.7 MB, SourceForge)")
-    urllib.request.urlretrieve(
+    req = urllib.request.Request(
         "https://sourceforge.net/projects/estimateproject/files/latest/"
-        "download", DEST)
+        "download", headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=300) as r, open(DEST, "wb") as f:
+        f.write(r.read())
 
 print("[extract] estimate_pkg...")
 with tarfile.open(DEST) as t:
@@ -234,7 +239,7 @@ np.savez_compressed(os.path.join(DATA, "tcga_brca_counts.npz"),
                     counts=X, genes=genes_ref.to_numpy())
 pd.DataFrame({"barcode": barcodes, "type": types}).to_csv(
     os.path.join(DATA, "tcga_brca_samples.tsv"), sep="\t", index=False)
-print(f"matriz: {X.shape[1]} genes x {X.shape[0]} amostras -> "
+print(f"matriz: {X.shape[0]} genes x {X.shape[1]} amostras -> "
       f"tcga_brca_counts.npz")
 ```
 
@@ -289,7 +294,7 @@ arms = {n: {"acc": np.zeros(len(splits)), "auc": np.zeros(len(splits))}
         for n in ["full", "panelA", "panelB", "panelC", "randDE"]
         + [f"k{k}" for k in KS] + ["null"]}
 null_draws_acc = np.zeros(N_NULL)
-aucs_null = np.zeros(N_NULL)
+aucs_null_acc = np.zeros(N_NULL)
 
 for i, (tr, te) in enumerate(splits):
     Xtr, Xte, ytr, yte = X[tr], X[te], y[tr], y[te]
@@ -326,6 +331,7 @@ for i, (tr, te) in enumerate(splits):
     # null: uniform random 10-gene panels (median over B draws per split)
     rng = np.random.default_rng(42)
     draws = np.zeros(N_NULL)
+    aucs_null = np.zeros(N_NULL)
     for b in range(N_NULL):
         cols = rng.choice(N_GENES, size=NULL_K, replace=False)
         m = LogisticRegression(max_iter=2000).fit(Ztr[:, cols], ytr)
@@ -334,6 +340,7 @@ for i, (tr, te) in enumerate(splits):
     arms["null"]["acc"][i] = float(draws.mean())
     arms["null"]["auc"][i] = float(aucs_null.mean())
     null_draws_acc += draws / len(splits)
+    aucs_null_acc += aucs_null / len(splits)
 
     if (i + 1) % 5 == 0:
         print(f"  split {i+1}/{len(splits)}", flush=True)
@@ -349,7 +356,7 @@ res = {n: {"acc": float(v["acc"].mean()), "acc_std": float(v["acc"].std()),
        for n, v in arms.items()}
 res["null_per_draw_overall_mean"] = float(null_draws_acc.mean())
 res["null_acc_per_draw"] = [float(x) for x in null_draws_acc]
-res["null_auc_per_draw_mean_iqr"] = [float(np.quantile(aucs_null, q))
+res["null_auc_per_draw_mean_iqr"] = [float(np.quantile(aucs_null_acc, q))
                                      for q in (0.25, 0.5, 0.75)]
 json.dump(res, open(os.path.join(OUT, "nested_compression.json"), "w"),
           indent=2)
@@ -522,8 +529,9 @@ samples = pd.read_csv(os.path.join(data_dir, "tcga_brca_samples.tsv"),
 y = (samples["type"] == "tumor").to_numpy().astype(int)
 lib = counts.sum(axis=0, keepdims=True)
 lcpm = np.log2(counts / lib * 1e6 + 1.0)
-gdc = os.path.join(data_dir, "gdc_brca", sorted(
-    os.listdir(os.path.join(data_dir, "gdc_brca")))[0])
+gdc_dir = os.path.join(data_dir, "gdc_brca")
+gdc = os.path.join(gdc_dir, sorted(
+    f for f in os.listdir(gdc_dir) if f.endswith(".tsv"))[0])
 tsv = pd.read_csv(gdc, sep="\t", comment="#",
                   usecols=["gene_id", "gene_name"]).dropna()
 tsv["gene_id"] = tsv["gene_id"].str.split(".").str[0]
@@ -535,8 +543,9 @@ for i, s in enumerate(sym_all):
         sym_pos[s] = i
 
 mask = np.isin(sym_all, common)
-Xg = lcpm[mask]
-gsyms = np.array(sorted(sym_all[mask]))
+order_g = np.argsort(sym_all[mask], kind="stable")
+Xg = lcpm[mask][order_g]
+gsyms = np.array(sym_all[mask][order_g])   # sorted; rows aligned to gsyms
 ng = Xg.shape[0]
 ranks = np.argsort(np.argsort(Xg, axis=0, kind="stable"),
                    axis=0).astype(np.float64) + 1.0
@@ -576,8 +585,7 @@ Zp = pscore(np.ascontiguousarray(Xp))
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 feats = {"stromal_only": stromal.reshape(-1, 1),
          "estimate_only": estimate.reshape(-1, 1),
-         "panel": Zp,
-         "stromal_plus_panel": np.column_stack([stromal, Zp])}
+         "panel": Zp}
 accs = {}
 for name, F in feats.items():
     a = []
@@ -587,11 +595,24 @@ for name, F in feats.items():
     accs[name] = float(np.mean(a))
     print(f"  CV acc [{name}]: {np.mean(a):.1%}")
 
-# additive test: panel vs stromal+panel, paired 5-fold
+# combo: stromal z-scored with train-fold stats so the L2 penalty sees both
+# features on comparable scales (panel is already per-gene z)
+a = []
+for tr, te in skf.split(Zp, y):
+    mu_s, sd_s = stromal[tr].mean(), stromal[tr].std() + 1e-6
+    F2 = np.column_stack([(stromal - mu_s) / sd_s, Zp])
+    lr2 = LogisticRegression(max_iter=2000).fit(F2[tr], y[tr])
+    a.append(lr2.score(F2[te], y[te]))
+accs["stromal_plus_panel"] = float(np.mean(a))
+print(f"  CV acc [stromal_plus_panel]: {np.mean(a):.1%}")
+
+# additive test: panel vs stromal+panel, paired 5-fold (stromal z-scored
+# with train-fold stats)
 diffs = []
 for tr, te in skf.split(Zp, y):
     lr1 = LogisticRegression(max_iter=2000).fit(Zp[tr], y[tr])
-    F2 = np.column_stack([stromal, Zp])
+    mu_s, sd_s = stromal[tr].mean(), stromal[tr].std() + 1e-6
+    F2 = np.column_stack([(stromal - mu_s) / sd_s, Zp])
     lr2 = LogisticRegression(max_iter=2000).fit(F2[tr], y[tr])
     diffs.append(lr1.score(Zp[te], y[te]) - lr2.score(F2[te], y[te]))
 
@@ -627,25 +648,31 @@ from common import (DATA, load_tcga, load_gct, fetch_metabric, pscore,
                     PANEL_C)
 
 X, y, pos, gk = load_tcga()
-colC = [pos[g] for g in PANEL_C if g in pos]
-muC, sdC = X[:, colC].mean(0), X[:, colC].std(0) + 1e-6
-Ftr = np.ascontiguousarray((X[:, colC] - muC) / sdC)
-lr = LogisticRegression(max_iter=2000).fit(Ftr, y)
+syms = [g for g in PANEL_C if g in pos]
+colC = [pos[g] for g in syms]
+# per-sample z (platform-invariant) on BOTH sides of the transfer:
+# train and test features must live in the same space
+Ztc = pscore(X[:, colC])
+lr = LogisticRegression(max_iter=2000).fit(Ztc, y)
 
 # GTEx normal breast
 Lb, gpos_b, n_b = load_gct(os.path.join(DATA, "gtex_breast_v10_reads.gct.gz"))
-idx_b = [gpos_b[g] for g in PANEL_C if g in gpos_b]
-syms_b = [g for g in PANEL_C if g in gpos_b]
-Fte_b = np.ascontiguousarray(((Lb[idx_b, :] - muC[:len(idx_b), None]) /
-                              (sdC[:len(idx_b), None] + 1e-6 + 1e-6)).T)
+syms_b = [g for g in syms if g in gpos_b]
+if syms_b != syms:
+    raise SystemExit(f"E15-GUARD: genes ausentes no GTEx: "
+                     f"{sorted(set(syms) - set(syms_b))}")
+Fte_b = pscore(Lb[[gpos_b[g] for g in syms_b], :].T.astype(np.float32))
 p_gtex = lr.predict_proba(Fte_b)[:, 1]
 gtex_normal = float((p_gtex < 0.5).mean())
 print(f"GTEx normal breast: {gtex_normal:.1%} called normal (n={n_b})")
 
-# METABRIC tumors
-mm = fetch_metabric(PANEL_C)
-idx_m = mm[PANEL_C].dropna().index
-Zm = pscore(mm.loc[idx_m, PANEL_C].to_numpy(dtype=np.float32))
+# METABRIC tumors (per-sample z, same gene order; loud guard)
+mm = fetch_metabric(syms)
+missing = [g for g in syms if g not in mm.columns]
+if missing:
+    raise SystemExit(f"E15-GUARD: genes ausentes no METABRIC: {missing}")
+idx_m = mm[syms].dropna().index
+Zm = pscore(mm.loc[idx_m, syms].to_numpy(dtype=np.float32))
 p_met = lr.predict_proba(Zm)[:, 1]
 met_tumor = float((p_met > 0.5).mean())
 print(f"METABRIC tumors: {met_tumor:.1%} called tumor (n={len(p_met)})")
@@ -1188,7 +1215,8 @@ def load_tcga(data_dir=DATA):
 
 def _first_gdc_tsv(data_dir):
     gdc = os.path.join(data_dir, "gdc_brca")
-    return os.path.join(gdc, sorted(os.listdir(gdc))[0])
+    return os.path.join(gdc, sorted(
+        f for f in os.listdir(gdc) if f.endswith(".tsv"))[0])
 
 
 def load_gct(path):
@@ -1500,7 +1528,8 @@ axD = fig.add_subplot(gs[1, 1])
 panel_tag(axD, "D")
 axD.grid(axis="y", color=C_GRID, lw=0.6, zorder=0)
 pops = ["TCGA\ntumor", "TCGA\nnormal", "GTEx\nbreast", "GTEx\nadipose"]
-valsD = [-1.374, 0.400, 0.388, 0.696]
+valsD = [axis["tcga_tumor"], axis["tcga_adjacent_normal"],
+         axis["gtex_breast"], axis["gtex_adipose"]]
 colsD = [C_ORANGE, C_BLUE, C_GREEN, C_YELLOW]
 bars = axD.bar(pops, valsD, color=colsD, width=0.55, edgecolor="#222222",
                lw=0.6, zorder=2, alpha=0.9)
@@ -1630,55 +1659,6 @@ print("Figuras 1 e S1 regeneradas com sucesso.")
 
 ---
 
-## pin_req.py
-
-```python
-# -*- coding: utf-8 -*-
-import os
-import importlib.metadata as im
-
-packages = ["scikit-learn", "numpy", "scipy", "pandas",
-            "requests", "matplotlib", "rdata"]
-lines = []
-for pkg in packages:
-    try:
-        v = im.version(pkg)
-        lines.append(f"{pkg}=={v}")
-    except im.PackageNotFoundError:
-        pass
-out = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                   "..", "requirements.txt")
-open(out, "w").write("\n".join(lines) + "\n")
-print("requirements.txt pinado")
-```
-
----
-
-## pin_requirements.py
-
-```python
-# -*- coding: utf-8 -*-
-"""Gera requirements.txt com versões pinadas do ambiente atual."""
-import importlib.metadata as im
-
-packages = [
-    "scikit-learn", "numpy", "scipy", "pandas",
-    "requests", "matplotlib", "rdata",
-]
-lines = []
-for pkg in packages:
-    try:
-        v = im.version(pkg)
-        lines.append(f"{pkg}=={v}")
-    except im.PackageNotFoundError:
-        print(f"  aviso: {pkg} não instalado")
-open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                  "requirements.txt"), "w").write("\n".join(lines) + "\n")
-print("requirements.txt com versões pinadas")
-```
-
----
-
 ## pipeline_utils.py
 
 ```python
@@ -1796,10 +1776,10 @@ EXPECTED = {
         "tcga_tumor": -1.374, "tcga_adjacent_normal": 0.400,
         "gtex_breast": 0.388, "gtex_adipose": 0.696},
     "06_estimate_baseline.json": {
-        "cv_acc/stromal_only": 0.818, "cv_acc/panel": 0.984,
-        "cv_acc/stromal_plus_panel": 0.984},
+        "cv_acc/stromal_only": 0.819, "cv_acc/panel": 0.984,
+        "cv_acc/stromal_plus_panel": 0.981},
     "07_transfer.json": {
-        "gtex_normal_frac": 0.994, "metabric_frac_tumor": 0.993},
+        "gtex_normal_frac": 0.996, "metabric_frac_tumor": 0.935},
     "08_clinical_subtypes.json": {
         "clinical_bh/histology": 1.34e-04, "clinical_bh/ER_STATUS": 1.61e-02,
         "clinical_bh/PR_STATUS": 3.97e-02,
@@ -1818,13 +1798,16 @@ EXPECTED = {
 }
 TOL = 0.02
 
+# script -> result filename (03 writes nested_compression.json, unprefixed)
+OUT_NAMES = {"03_nested_compression.py": "nested_compression.json"}
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
     t0 = time.time()
     for script in PIPELINE:
-        out = os.path.join(RES, script[:-3] + ".json")
+        out = os.path.join(RES, OUT_NAMES.get(script, script[:-3] + ".json"))
         if script.startswith(("01", "02")):
             print(f"[run ] {script} (idempotente: baixa apenas o que falta)",
                   flush=True)

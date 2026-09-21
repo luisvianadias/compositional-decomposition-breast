@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Public reproduction orchestrator. Stages skip when outputs exist."""
+import math
 import os, sys, subprocess, argparse, json, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -84,11 +85,16 @@ def main():
         d = json.load(open(p, encoding="utf-8"))
         for path, exp in checks.items():
             v = get(d, path)
-            ok = abs(v - exp) <= TOL
+            # accuracies: absolute tolerance; p-values/chi2/BH (<<1):
+            # relative tolerance so the check stays meaningful at that scale
+            if abs(exp) < 0.05:
+                ok = math.isclose(v, exp, rel_tol=0.02)
+            else:
+                ok = abs(v - exp) <= TOL
             n_ok += ok
             n_bad += (not ok)
             print(f"  [{'PASS' if ok else 'FAIL'}] {jf}::{path} = "
-                  f"{v:.4f} (esperado {exp})")
+                  f"{v:.6g} (esperado {exp})")
     print(f"\n{n_ok} PASS / {n_bad} FAIL "
           f"({time.time()-t0:.0f}s)")
     sys.exit(0 if n_bad == 0 else 1)

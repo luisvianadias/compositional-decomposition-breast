@@ -6,7 +6,7 @@ Output: results/08_clinical_subtypes.json
 import os, sys, json, math, time, requests
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2_contingency, binomtest, norm
+from scipy.stats import chi2_contingency
 from sklearn.linear_model import LogisticRegression
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -164,7 +164,7 @@ for n_, b in zip(nm_, bhj):
     print(f"  {n_:<12} BH={b:.2e}")
 
 res = {
-    "clinical_bh": {n_: float(b) for n_, b in zip(names, bh[:m_ - 1])},
+    "clinical_bh": {n_: float(b) for n_, b in zip(names, bh)},
     "pam50_chi2_with_normal": float(p5),
     "pam50_chi2_without_normal": float(p4),
     "joint_bh": {n_: float(b) for n_, b in zip(nm_, bhj)},
