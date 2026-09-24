@@ -5,8 +5,8 @@ authors:
     given-names: Luis Mario
     orcid: "https://orcid.org/0009-0005-7687-9319"
 title: "Adipose-associated compositional axis in bulk breast tumor-normal separation: reproduction pipeline"
-version: v1.1.4
-date-released: "2026-09-20"
+version: v1.2.0
+date-released: "2026-09-22"
 identifiers:
   - type: doi
     value: "10.5281/zenodo.22866831"

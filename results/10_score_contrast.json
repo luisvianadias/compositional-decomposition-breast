@@ -1,0 +1,18 @@
+{
+  "acc_ablacao_A_adiposo": 0.9075615548056495,
+  "acc_ablacao_ctl_media": 0.847217847769029,
+  "acc_ablacao_ctl_por_draw_iqr": [
+    0.8406678331875184,
+    0.8558617672790902
+  ],
+  "ctl_distintos": 30,
+  "prevalencia": 0.820919175911252,
+  "D_A_adiposo": 0.4907009217801684,
+  "D_ctl": 0.8454118007090208,
+  "EXCESSO_especificidade": -0.3547108789288524,
+  "pareado_NB_t_adiposo_vs_ctl": 4.247998930832854,
+  "B_rand": 30,
+  "input_top": 2000,
+  "neighbors": 5,
+  "nota": "Contraste no nivel do escore (regime difuso): ablaglobal com A adiposo vs. escores controle pareados por |Delta-media|, sorteados entre os 5 vizinhos mais proximos (sem reposicao)."
+}

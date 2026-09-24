@@ -39,6 +39,8 @@ scripts/
   08_clinical_subtypes.py # Sec 2.5: clinical BH family + PAM50 subtypes
   09_clinical_models.py   # Sec 2.4-2.5: axis-score rule (public second model),
                           #            histology/PAM50 breakdowns, split-half
+  10_score_contrast.py    # Sec 2.3: paired-score specificity contrast for
+                          #            the global ablation (B=30 controls)
   pipeline_utils.py       # E15-GUARD: safe panel extraction + randDE picker
   test_guard.py, test_pipeline_utils.py, test_namespace_guard.py
 run_all.py                # orchestrator + verification manifest (33 checks)
@@ -53,7 +55,7 @@ python scripts/run_all.py            # downloads data on first run (~10 min)
 
 Every script writes JSON outputs to `results/` and uses fixed seeds
 (42/123/777). The expected headline numbers (abstract) are embedded in
-`run_all.py` as a verification manifest (33 checks, run automatically at
+`run_all.py` as a verification manifest (37 checks, run automatically at
 the end of the pipeline).
 
 ## Method summary

@@ -50,6 +50,16 @@ the GDC file identifiers.
   the same per-sample z-score space on both sides of the transfer
   (GTEx 99.6%, METABRIC 93.5%); null AUC quantiles accumulate over all
   15 splits; xarray pinned (required by rdata for R arrays).
+- Adversarial re-audit of Section 2.3 (2026-09-22): the global ablation
+  (98.9 -> 90.9) establishes route DEPENDENCE, not adipose identity. A
+  paired-score contrast (script `10_score_contrast.py`; B = 30
+  randomized |Delta|-matched non-adipose control scores) removes more
+  accuracy than the adipose score itself (84.7% vs 90.9%; excess = -0.35,
+  paired t = +4.25). The manuscript's Section 2.3 was reframed
+  accordingly (dependence vs. specificity; specificity anchored on the
+  Sections 2.4-2.6 triangulation). An earlier version of the contrast had
+  a degenerate control (deterministic pairing made all B = 30 replicas
+  identical); fixed with randomized neighbour selection.
 - The "high centroid-separation confidence stratum" of the earlier
   manuscript version was removed: in the private script the margin was
   computed as (second-best − best) centroid correlation, so

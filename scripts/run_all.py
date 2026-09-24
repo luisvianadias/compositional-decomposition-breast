@@ -12,7 +12,7 @@ PIPELINE = ["01_download_data.py", "01b_download_estimate.py",
             "03_nested_compression.py", "04_adipose_ablation.py",
             "05_cross_cohort_axis.py", "06_estimate_baseline.py",
             "07_transfer.py", "08_clinical_subtypes.py",
-            "09_clinical_models.py"]
+            "09_clinical_models.py", "10_score_contrast.py"]
 
 def get(d, path):
     cur = d
@@ -52,6 +52,11 @@ EXPECTED = {
         "split_half/LR@0.5/half_B": 0.930,
         "split_half/AXIS@t*/half_B": 0.848,
         "concordance_heldout": 0.889},
+    "10_score_contrast.json": {
+        "acc_ablacao_A_adiposo": 0.908,
+        "acc_ablacao_ctl_media": 0.847,
+        "EXCESSO_especificidade": -0.35,
+        "ctl_distintos": 30},
 }
 TOL = 0.02
 
