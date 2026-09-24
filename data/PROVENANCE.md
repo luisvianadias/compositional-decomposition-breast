@@ -55,11 +55,17 @@ the GDC file identifiers.
   paired-score contrast (script `10_score_contrast.py`; B = 30
   randomized |Delta|-matched non-adipose control scores) removes more
   accuracy than the adipose score itself (84.7% vs 90.9%; excess = -0.35,
-  paired t = +4.25). The manuscript's Section 2.3 was reframed
+  paired t = +4.25). The   manuscript's Section 2.3 was reframed
   accordingly (dependence vs. specificity; specificity anchored on the
   Sections 2.4-2.6 triangulation). An earlier version of the contrast had
   a degenerate control (deterministic pairing made all B = 30 replicas
-  identical); fixed with randomized neighbour selection.
+  identical); fixed with randomized neighbour selection. Robustness of
+  the contrast verified on two axes: (i) control-set diversity — 300
+  draws yield 300 distinct sets (per-gene 5-neighbour choice composes a
+  5^15 set space; neighbour-index histogram uniform), so the split-level
+  paired t (n = 15 splits, NB-corrected, median over draws) has no
+  draw-level pseudo-replication; (ii) neighbourhood width — widening the
+  sampling to 15 neighbours moves excess -0.35 -> -0.36 (t 4.25 -> 4.48).
 - The "high centroid-separation confidence stratum" of the earlier
   manuscript version was removed: in the private script the margin was
   computed as (second-best − best) centroid correlation, so
